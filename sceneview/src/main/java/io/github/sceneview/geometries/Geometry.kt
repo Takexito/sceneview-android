@@ -151,8 +151,8 @@ open class Geometry(
             }.build(engine)
 
             return build(vertexBuffer, indexBuffer).apply {
-                setBufferVertices(engine, vertices)
-                setBufferIndices(engine, submeshes)
+                setBufferVertices(engine, this@BaseBuilder.vertices)
+                setBufferIndices(engine, this@BaseBuilder.submeshes)
             }
         }
 

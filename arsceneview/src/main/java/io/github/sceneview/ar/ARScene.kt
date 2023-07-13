@@ -1,5 +1,6 @@
 package io.github.sceneview.ar
 
+import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -13,6 +14,7 @@ import com.google.ar.core.TrackingFailureReason
 import io.github.sceneview.ar.arcore.ArFrame
 import io.github.sceneview.ar.arcore.ArSession
 import io.github.sceneview.node.Node
+import io.github.sceneview.renderable.Renderable
 
 @Composable
 fun ARScene(
@@ -23,7 +25,8 @@ fun ARScene(
     onSessionCreate: (ArSceneView.(session: ArSession) -> Unit)? = null,
     onTrackingFailureChanged: (ArSceneView.(trackingFailureReason: TrackingFailureReason?) -> Unit)? = null,
     onFrame: (ArSceneView.(arFrame: ArFrame) -> Unit)? = null,
-    onTap: (ArSceneView.(hitResult: HitResult) -> Unit)? = null
+    onArGesture: (ArSceneView.(hitResult: HitResult, motionEvent: MotionEvent) -> Unit)? = null,
+    onGesture: (ArSceneView.(motionEvent: MotionEvent, node: Node?, renderable: Renderable?) -> Unit)? = null,
 ) {
     if (LocalInspectionMode.current) {
         ArScenePreview(modifier)
@@ -37,7 +40,21 @@ fun ARScene(
                     this.onArSessionCreated = { onSessionCreate?.invoke(this, it) }
                     this.onArFrame = { onFrame?.invoke(this, it) }
                     this.onArTrackingFailureChanged = { onTrackingFailureChanged?.invoke(this, it) }
-                    this.onTapAr = { hitResult, _ -> onTap?.invoke(this, hitResult) }
+                    this.onTapAr = { hitResult, motionEvent ->
+                        onArGesture?.invoke(
+                            this,
+                            hitResult,
+                            motionEvent
+                        )
+                    }
+                    this.onTap = { motionEvent, node, renderable ->
+                        onGesture?.invoke(
+                            this,
+                            motionEvent,
+                            node,
+                            renderable
+                        )
+                    }
                     onCreate?.invoke(this)
                 }
             },
@@ -48,7 +65,7 @@ fun ARScene(
                 nodes.filter { it !in sceneViewNodes }.forEach {
                     sceneView.addChild(it)
                 }
-                sceneViewNodes = nodes
+                sceneViewNodes = nodes.toList()
 
                 sceneView.planeRenderer.isEnabled = planeRenderer
             }
