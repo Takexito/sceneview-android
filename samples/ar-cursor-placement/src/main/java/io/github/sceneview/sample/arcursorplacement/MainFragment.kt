@@ -2,6 +2,7 @@ package io.github.sceneview.sample.arcursorplacement
 
 import android.media.MediaRecorder
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -10,12 +11,21 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.ar.core.Anchor
+import com.google.ar.sceneform.math.Vector3
+import dev.romainguy.kotlin.math.Float3
+import dev.romainguy.kotlin.math.Quaternion
 import io.github.sceneview.ar.ArSceneView
 import io.github.sceneview.ar.node.ArModelNode
 import io.github.sceneview.ar.node.CursorNode
+import io.github.sceneview.math.Position
+import io.github.sceneview.math.Rotation
+import io.github.sceneview.math.Transform
+import io.github.sceneview.math.quaternion
 import io.github.sceneview.model.GLBLoader
 import io.github.sceneview.model.ModelInstance
 import io.github.sceneview.utils.doOnApplyWindowInsets
+import kotlinx.coroutines.delay
+
 
 class MainFragment : Fragment(R.layout.fragment_main) {
 
@@ -87,6 +97,8 @@ class MainFragment : Fragment(R.layout.fragment_main) {
             }
         }
 
+
+
         cursorNode = CursorNode(sceneView.engine).apply {
             onHitResult = { node, _ ->
                 if (!isLoading) {
@@ -94,7 +106,88 @@ class MainFragment : Fragment(R.layout.fragment_main) {
                 }
             }
         }
+
+//        val parentNode = CursorNode(sceneView.engine).apply {
+//            position = Position(x = 0f, z = -2f, y = 0f)
+//            followHitPosition = false
+//            anchor()
+//            rotation = Rotation(30f)
+//        }
+
+        val basePosition = Position(x = 0f, y = -1f, z = -2f)
+        val stepX = 0.5f
+        val stepZ = -0.5f
+        val readyPositions = List(3) { row ->
+            List(3) { column ->
+                basePosition + Position(x = row * stepX, z = column * stepZ)
+            }
+        }
+
+        val cards = List(3) { row ->
+            List(3) { column ->
+                CursorNode(sceneView.engine).apply {
+                    onTap = { motionEvent, renderable ->
+                        val cameraTransform = sceneView.cameraNode.transform
+                        val cameraPosition = cameraTransform.position
+                        val cameraQuaternion = cameraTransform.quaternion
+                        val forwardVector = cameraQuaternion * Float3(0f, 0f, 1f)
+                        val newPosition = cameraPosition + forwardVector * -0.5f
+
+                        val newQuaternion = Quaternion.fromAxisAngle(forwardVector, 0f)
+                        val newTransform = Transform(newPosition, cameraQuaternion + newQuaternion, scale)
+//                        this.smooth(readyPositions[row][column] + Position(y = 0.5f))
+                        this.smooth(newTransform)
+                    }
+                    onHitResult = { node, _ ->
+                        if (!isLoading) {
+                            anchorButton.isGone = !node.isTracking
+                        }
+                    }
+                    followHitPosition = false
+                    position = basePosition
+                    anchor()
+                }
+            }
+        }
+
+        cards.forEach { rows ->
+            rows.forEach {
+                sceneView.addChild(it)
+            }
+        }
+
+        lifecycleScope.launchWhenResumed {
+            delay(3000)
+            cards.forEachIndexed { row, rows ->
+                rows.forEachIndexed { column, node ->
+                    node.smooth(readyPositions[row][column])
+                }
+            }
+        }
+
         sceneView.addChild(cursorNode)
+
+
+//        lifecycleScope.launchWhenCreated {
+//
+//            val material = withContext(Dispatchers.Main) {
+//                MaterialFactory.makeOpaqueWithColor(
+//                    requireContext(),
+//                    Color(android.graphics.Color.RED)
+//                ).thenAccept {
+//                    val sphereBuilder = Sphere.Builder()
+//
+//                    val entity = GeometryNode(
+//                        sceneView.engine,
+//                        sphereBuilder.build(),
+//                        materials = listOf(it.getFilamentMaterialInstance())
+//                    )
+//
+//                    sceneView.addChild(entity)
+//                }
+//            }
+//
+//        }
 
         isLoading = true
         lifecycleScope.launchWhenCreated {

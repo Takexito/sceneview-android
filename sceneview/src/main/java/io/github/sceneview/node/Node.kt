@@ -671,7 +671,7 @@ open class Node(val engine: Engine) : NodeParent, TransformProvider,
      * @see scale
      * @see speed
      */
-    fun smooth(
+    fun smoothR(
         position: Position = this.position,
         rotation: Rotation = this.rotation,
         scale: Scale = this.scale,
